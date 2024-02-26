@@ -415,13 +415,13 @@ class MerkleTree(object):
   
   :param node: node that its left and right children will be swapped
   """
-  def inOrder_to_swap_nodes(self, node):
+  def postOrder_to_swap_nodes(self, node):
     if node is None:
       return
     if node.left is not None:
-      self.inOrder_to_swap_nodes(node.left)
+      self.postOrder_to_swap_nodes(node.left)
       if node.right is not _empty:
-        self.inOrder_to_swap_nodes(node.right)
+        self.postOrder_to_swap_nodes(node.right)
         left = node.left
         right = node.right
         hash = left.hash
@@ -440,7 +440,7 @@ class MerkleTree(object):
   def swap_nodes_at_height_level(self):
     if self._root is None:
       return
-    self.inOrder_to_swap_nodes(self._root)
+    self.postOrder_to_swap_nodes(self._root)
 
   """Provides an audit proof for a leaf.
 
