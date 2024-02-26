@@ -410,10 +410,11 @@ class MerkleTree(object):
         mapping[leaf.hash] = leaf
       self._set_root(nodes[0])
     self._mapping = mapping
-    """Inorder traversal to swap nodes at height level
-    
-    :param node: node that its left and right children will be swapped
-    """
+  
+  """Inorder traversal to swap nodes at height level
+  
+  :param node: node that its left and right children will be swapped
+  """
   def inOrder_to_swap_nodes(self, node):
     if node is None:
       return

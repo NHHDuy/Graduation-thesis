@@ -5,7 +5,7 @@ from src.merkle import *
 from src.output_tree import *
 
 # a list of all ASCII letters
-data = list(string.ascii_letters)
+data = ['A', 'B', 'C', 'D', 'E']#list(string.ascii_letters)
 
 # build a Merkle tree for that list
 tree = MerkleTree(data, None)
@@ -23,7 +23,7 @@ else:
   
 # beautify the tree for visualization
 beautify(tree)
-
+print('\n')
 # swap the hash value of left and right children
 tree.swap_nodes_at_height_level()
 
@@ -39,6 +39,6 @@ if tree.verify_leaf_inclusion('A', proof_swap, True):
 else:
   exit('A is not in the tree')
 
-print('Tree after swapping:\n')
+print('\nTree after swapping:')
 # beautify the tree for visualization after swapping
 beautify(tree)
