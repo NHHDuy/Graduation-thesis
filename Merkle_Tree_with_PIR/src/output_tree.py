@@ -29,6 +29,6 @@ def _convert_print_tree(tree):
   return parent
 
 def beautify(tree):
-  parent = _print_tree(tree)
+  parent = _convert_print_tree(tree)
   for pre, fill, node in RenderTree(parent):
     print(f'{pre}{node.name}')

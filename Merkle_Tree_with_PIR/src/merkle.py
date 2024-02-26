@@ -107,6 +107,28 @@ def _concat(hasher, *nodes):
     return hasher.hash_children(*children)
   return functools.reduce(__concat, nodes)
 
+"""Concatenate the hashes of two nodes using the provided hasher object after swapping.
+
+:param hasher: Hasher object for hashing nodes.
+:param nodes: nodes that should be concatenated.
+Usually, descendants of _BaseNode, hexadecimal strings, _empty nodes or mixed.
+:return: the hash value produced by concatenation of provided nodes.
+"""
+def _concat_swapped(hasher, *nodes):
+  def __concat_swapped(x, y):
+    # we can't concatenate _empty nodes
+    # return the hash value of the not _empty object
+    if (x is []) or (y is []):
+      return x.hash if y is [] else y.hash
+    children = (_get_hash(x), _get_hash(y))
+    # x.type == RIGHT or y.type == LEFT indicates y + x
+    if isinstance(x, _BaseNode) and x.type == LEFT:
+      return hasher.hash_children(*children[::-1])
+    elif isinstance(y, _BaseNode) and y.type == RIGHT:
+      return hasher.hash_children(*children[::-1])
+    return hasher.hash_children(*children)
+  return functools.reduce(__concat_swapped, nodes)
+
 """Traverses the Merkle Tree to a certain level.
 
 :param node: marks the starting point from which we begin climbing up the tree.
@@ -186,7 +208,7 @@ it will be used to convert a Hasher instance.
 :param root_hash: Merkle hash root provided by a trusted authority.
 :return: True if the leaf is included in the tree.
 """
-def verify_leaf_inclusion(target, proof, hashobj, root_hash):
+def verify_leaf_inclusion(target, proof, hashobj, root_hash, swapped):
   if not isinstance(hashobj, Hasher):
     if not callable(hashobj):
       raise TypeError(f'Expected callable, got {type(hashobj)}')
@@ -208,7 +230,10 @@ def verify_leaf_inclusion(target, proof, hashobj, root_hash):
       'a collection of <AuditNode> objects.'
       )
 
-  concat = lambda x,y: _concat(hasher, x, y)
+  if swapped is False:
+   concat = lambda x,y: _concat(hasher, x, y)
+  else:
+   concat = lambda x,y: _concat_swapped(hasher, x, y)
   def _calculate_root(target):
     _proof = [target] + paths
     return functools.reduce(concat, _proof)
@@ -385,6 +410,36 @@ class MerkleTree(object):
         mapping[leaf.hash] = leaf
       self._set_root(nodes[0])
     self._mapping = mapping
+    """Inorder traversal to swap nodes at height level
+    
+    :param node: node that its left and right children will be swapped
+    """
+  def inOrder_to_swap_nodes(self, node):
+    if node is None:
+      return
+    if node.left is not None:
+      self.inOrder_to_swap_nodes(node.left)
+      if node.right is not _empty:
+        self.inOrder_to_swap_nodes(node.right)
+        left = node.left
+        right = node.right
+        hash = left.hash
+        left.hash = right.hash
+        if hash is []:
+          node.right = _empty
+        else:
+          right.hash = hash
+      else:
+        left = node.left
+        node.right = MerkleNode(left.hash, None, None, node)
+        left.hash = []
+    else:
+      return
+
+  def swap_nodes_at_height_level(self):
+    if self._root is None:
+      return
+    self.inOrder_to_swap_nodes(self._root)
 
   """Provides an audit proof for a leaf.
 
@@ -412,6 +467,26 @@ class MerkleTree(object):
         node = AuditNode(sibiling.hash, sibiling.type)
         paths.append(node)
       target = target.parent
+    return AuditProof(paths)
+
+  def get_swap_proof(self, leaf):
+    mapping, hasher = self._mapping, self._hasher
+    # assuming that leaf in hexadecimal representation
+    target = mapping.get(leaf)
+    if target is None:
+      target = mapping.get(hasher.hash_leaf(leaf))
+    # no leaf in mapping, return an empty AuditProof object
+    if not isinstance(target, MerkleNode):
+      return AuditProof([])
+    root, paths = self._root, []
+    # saving every sibiling node (if not _empty)
+    # until the root node is reached
+    while target is not root:
+      if target is not []:
+        node = AuditNode(target.hash, target.type)
+        paths.append(node)
+      target = target.parent
+    
     return AuditProof(paths)
 
   def _rehash(self, node):
@@ -558,12 +633,13 @@ class MerkleTree(object):
     AuditNode objects which serve to recreate the original Merkle hash root.
   :return: True if the leaf is included in the tree.
   """
-  def verify_leaf_inclusion(self, target, proof):
+  def verify_leaf_inclusion(self, target, proof, swapped=False):
     return verify_leaf_inclusion(
       target,
       proof,
       self._hasher,
-      self.merkle_root
+      self.merkle_root,
+      swapped
     )
 
   def clear(self):
