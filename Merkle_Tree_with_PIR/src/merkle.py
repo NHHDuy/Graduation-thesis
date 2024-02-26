@@ -480,7 +480,7 @@ class MerkleTree(object):
     if not isinstance(target, MerkleNode):
       return AuditProof([])
     root, paths = self._root, []
-    # saving every sibiling node (if not _empty)
+    # saving every target node (if not [])
     # until the root node is reached
     while target is not root:
       if target is not []:
